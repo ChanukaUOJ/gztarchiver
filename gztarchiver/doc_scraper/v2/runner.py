@@ -46,7 +46,6 @@ def run_v2_pipeline(args, config, user_input_kind):
     scrape_url = config["scrape"]["url"]
     cdn_proxy_url = v2_config.get("cdn_proxy_url", "https://documents.gov.lk/api/content-file-proxy?file=")
     api_endpoint = v2_config.get("api_endpoint", "http://gvp-api:4500/website-data/extra-gazette/get-all")
-    archive_languages = v2_config.get("languages", ["ENGLISH"])
     lang_map = {"en": "ENGLISH", "si": "SINHALA", "ta": "TAMIL"}
 
     # Resolve paths
@@ -204,17 +203,11 @@ def run_v2_pipeline(args, config, user_input_kind):
             print(f"No documents found for language '{args.lang}'.")
             return
 
-        # Determine which languages to actually download
-        # (from v2.languages in config.yaml, limited to the requested lang)
-        languages_to_download = [l for l in archive_languages if l == requested_lang]
-        if not languages_to_download:
-            languages_to_download = [requested_lang]
-
         # Step 5 — Build download metadata
         all_download_metadata = build_download_metadata_v2(
             entries=lang_filtered,
             archive_location=archive_location,
-            archive_languages=languages_to_download,
+            archive_languages=[requested_lang],
             cdn_proxy_url=cdn_proxy_url,
         )
 
