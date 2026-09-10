@@ -46,7 +46,7 @@ def run_v2_pipeline(args, config, user_input_kind):
     scrape_url = config["scrape"]["url"]
     cdn_proxy_url = v2_config.get("cdn_proxy_url", "https://documents.gov.lk/api/content-file-proxy?file=")
     api_endpoint = v2_config.get("api_endpoint", "http://gvp-api:4500/website-data/extra-gazette/get-all")
-    lang_map = {"en": "ENGLISH", "si": "SINHALA", "ta": "TAMIL"}
+    LANG_MAP = {"en": "ENGLISH", "si": "SINHALA", "ta": "TAMIL"}
 
     # Resolve paths
     output_path_download = config["output"]["download_metadata_json"]
@@ -190,7 +190,7 @@ def run_v2_pipeline(args, config, user_input_kind):
             return
 
         # Step 4 — Filter by language
-        requested_lang = lang_map.get(str(args.lang), "ENGLISH")
+        requested_lang = LANG_MAP.get(str(args.lang), "ENGLISH")
 
         # Only keep entries that have at least one content in the requested lang
         lang_filtered = [
