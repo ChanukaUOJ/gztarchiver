@@ -189,8 +189,8 @@ class PDFDownloaderSpider(scrapy.Spider):
         self.logger.error(f"❌ Request failed: {item['download_url']}")
         print(f"  --❌ Request failed: {item['download_url']}")
         
-        # Update availability to Unavailable for failed downloads (e.g., 404 or corrupt links)
-        item["availability"] = "Unavailable"
+        # Update availability to DOWNLOAD_FAILED for failed downloads (e.g., 404 or corrupt links)
+        item["availability"] = "DOWNLOAD_FAILED"
 
     def closed(self, reason):
         """Called by Scrapy when spider completes all requests. Saves final metadata once."""
@@ -235,7 +235,7 @@ class PDFDownloaderSpider(scrapy.Spider):
                 writer = csv.writer(csvfile)
                 if not file_exists:
                     writer.writerow(["doc_id", "download_url", "file_path"])
-                if item['availability'] == 'Unavailable':
+                if item.get('availability') in ('NO_URL', 'Unavailable'):
                     unavailable_dir = item["file_path"].parent
                     writer.writerow([item["doc_id"], item["download_url"], unavailable_dir])
                 else:

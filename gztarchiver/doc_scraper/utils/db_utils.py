@@ -15,7 +15,7 @@ def save_metadata_to_filesystem(all_download_metadata, classified_metadata_dic, 
         
         document_file_path = Path(doc["file_path"])
         
-        if doc['availability'] == "Unavailable":
+        if doc['availability'] != "Available":
             doc['file_path'] = "N/A"
         
         document_object = {
