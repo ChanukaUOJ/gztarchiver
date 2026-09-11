@@ -37,17 +37,24 @@ def build_download_metadata_v2(
             or doc_id
         )
 
-        for content in entry.contents:
-            if content.language not in archive_languages:
-                continue
-
-            lang_suffix = content.language.lower()
-            download_url = f"{cdn_proxy_url}{content.uploadedFile}"
+        for lang in archive_languages:
+            lang_suffix = lang.lower()
+            matching_content = next(
+                (c for c in entry.contents if c.language == lang and c.uploadedFile),
+                None,
+            )
 
             file_name = f"{doc_id}_{lang_suffix}.pdf"
             folder_path = archive_location / year / month / day / doc_id
             folder_path.mkdir(parents=True, exist_ok=True)
             file_path = folder_path / file_name
+
+            if matching_content:
+                download_url = f"{cdn_proxy_url}{matching_content.uploadedFile}"
+                availability = "Available"
+            else:
+                download_url = "N/A"
+                availability = "Unavailable"
 
             all_download_metadata.append({
                 "doc_id": doc_id,
@@ -56,7 +63,7 @@ def build_download_metadata_v2(
                 "download_url": download_url,
                 "file_name": file_name,
                 "file_path": file_path,
-                "availability": "Available",
+                "availability": availability,
             })
 
     return all_download_metadata

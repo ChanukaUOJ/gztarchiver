@@ -189,33 +189,23 @@ def run_v2_pipeline(args, config, user_input_kind):
             print("No documents found for the given parameters.")
             return
 
-        # Step 3 — Filter by language
+        # Step 3 — Build download metadata for requested language
         requested_lang = LANG_MAP.get(str(args.lang), "ENGLISH")
-
-        # Only keep entries that have at least one content in the requested lang
-        lang_filtered = [
-            e for e in matching_entries
-            if any(c.language == requested_lang for c in e.contents)
-        ]
-        print(f"{len(lang_filtered)} entries have a '{requested_lang}' version.")
-
-        if not lang_filtered:
-            print(f"No documents found for language '{args.lang}'.")
-            return
-
-        # Step 4 — Build download metadata
         all_download_metadata = build_download_metadata_v2(
-            entries=lang_filtered,
+            entries=matching_entries,
             archive_location=archive_location,
             archive_languages=[requested_lang],
             cdn_proxy_url=cdn_proxy_url,
         )
 
         if not all_download_metadata:
-            print("No downloadable documents after building metadata.")
+            print(f"No documents found for the given parameters.")
             return
 
-        print(f"{len(all_download_metadata)} files queued for download.")
+        available_count = sum(1 for m in all_download_metadata if m.get("availability") == "Available")
+        unavailable_count = sum(1 for m in all_download_metadata if m.get("availability") == "Unavailable")
+        print(f"{available_count} documents available, {unavailable_count} unavailable for language '{requested_lang}'.")
+        print(f"{len(all_download_metadata)} files queued for processing.")
 
         # Step 5 — Download PDFs via shared PDFDownloaderSpider
         settings = hide_logs()
