@@ -1,6 +1,6 @@
 from pathlib import Path
 import json
-from gztarchiver.models.v2.gazette import GazetteEntry
+from gztarchiver.models import GazetteEntry
 
 def build_download_metadata_v2(
     entries: list[GazetteEntry],

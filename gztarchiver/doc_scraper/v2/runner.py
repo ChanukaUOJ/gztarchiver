@@ -17,7 +17,7 @@ from gztarchiver.doc_scraper.utils import (
 )
 from gztarchiver.doc_scraper.common.post_processing import post_crawl_processing
 from gztarchiver.doc_scraper.common.spiders import PDFDownloaderSpider
-from gztarchiver.models.v2 import GazetteApiResponse, GazetteEntry
+from gztarchiver.models import GazetteApiResponse, GazetteEntry
 
 logger = logging.getLogger(__name__)
 
