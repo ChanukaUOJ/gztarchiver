@@ -13,6 +13,7 @@ from gztarchiver.doc_scraper.utils import (
     build_download_metadata_v2,
     hide_logs,
     load_doc_metadata_file,
+    dynamic_page_size_based_on_date
 )
 from gztarchiver.doc_scraper.common.post_processing import post_crawl_processing
 from gztarchiver.doc_scraper.common.spiders import PDFDownloaderSpider
@@ -77,7 +78,7 @@ def run_v2_pipeline(args, config, user_input_kind):
             else:  # year-month-day-lang
                 return date_type(year, int(args.month), int(args.day))
 
-        def fetch_all_matching(page_size: int = 1500) -> list[GazetteEntry]:
+        def fetch_all_matching() -> list[GazetteEntry]:
             """
             Paginate through the API, collecting entries that fall within the
             requested date range. Stops as soon as the page's last entry is
@@ -94,6 +95,7 @@ def run_v2_pipeline(args, config, user_input_kind):
                 "Content-Type": "text/plain;charset=UTF-8",
                 "next-action": token}
             stop_date = _build_stop_date(user_input_kind)
+            page_size = dynamic_page_size_based_on_date(stop_date)
             collected: list[GazetteEntry] = []
             current_page = 1
 
