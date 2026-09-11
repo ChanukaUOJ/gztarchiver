@@ -4,7 +4,7 @@ from gztarchiver.doc_scraper.utils import (
     hide_logs,
     load_doc_metadata_file,
     filter_doc_metadata,
-    create_folder_structure,
+    build_download_metadata_v1,
 )
 from scrapy.crawler import CrawlerRunner
 from twisted.internet import defer
@@ -79,7 +79,7 @@ def run_v1_pipeline(args, config, user_input_kind):
         # Step 6: Create the folder structure for the filtered data and get download metadata
         archive_location = config["archive"]["archive_location"]
         ARCHIVE_LOCATION = Path(archive_location)
-        all_download_metadata = create_folder_structure(ARCHIVE_LOCATION, filtered_doc_metadata)
+        all_download_metadata = build_download_metadata_v1(ARCHIVE_LOCATION, filtered_doc_metadata)
                         
         # Step 7: Download the documents
         if all_download_metadata:

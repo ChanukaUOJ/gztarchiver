@@ -1,5 +1,4 @@
 from pathlib import Path
-import json
 from gztarchiver.models import GazetteEntry
 
 def build_download_metadata_v2(
@@ -69,7 +68,7 @@ def build_download_metadata_v2(
     return all_download_metadata
 
 
-def create_folder_structure(archive_location, filtered_doc_metadata):
+def build_download_metadata_v1(archive_location, filtered_doc_metadata):
     
     base_path = archive_location
     
