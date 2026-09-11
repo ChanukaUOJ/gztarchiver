@@ -221,7 +221,7 @@ def run_v2_pipeline(args, config, user_input_kind):
         # Reload from file — the spider updates availability for any failed
         # downloads before saving, so this reflects the actual final state.
         updated_download_metadata = load_doc_metadata_file(str(output_path_download))
-        final_metadata = updated_download_metadata if updated_download_metadata else all_download_metadata
+        final_metadata = updated_download_metadata if updated_download_metadata is not None else all_download_metadata
         
         yield defer.maybeDeferred(
             post_crawl_processing, args, config, final_metadata, str(archive_location)
