@@ -224,22 +224,81 @@ class PDFDownloaderSpider(scrapy.Spider):
             self.logger.error(f"❌ Failed to save updated metadata: {e}")
             print(f"❌ Failed to save updated metadata: {e}")
     
+    def _upsert_csv_row(self, log_file: Path, doc_id: str, row_data: list):
+        """Insert or update a row in a CSV log file by doc_id without duplicates."""
+        rows = {}
+        header = ["doc_id", "download_url", "file_path"]
+        if log_file.exists():
+            try:
+                with open(log_file, "r", encoding="utf-8") as f:
+                    reader = csv.reader(f)
+                    file_header = next(reader, None)
+                    if file_header:
+                        header = file_header
+                    for r in reader:
+                        if r and len(r) > 0:
+                            rows[r[0]] = r
+            except Exception as e:
+                self.logger.warning(f"Error reading {log_file} for upsert: {e}")
+
+        rows[doc_id] = row_data
+
+        with open(log_file, "w", newline='', encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(header)
+            for r in rows.values():
+                writer.writerow(r)
+
+    def _remove_csv_row(self, log_file: Path, doc_id: str):
+        """Remove a row with doc_id from a CSV log file if present."""
+        if not log_file.exists():
+            return
+        try:
+            rows = []
+            header = ["doc_id", "download_url", "file_path"]
+            found = False
+            with open(log_file, "r", encoding="utf-8") as f:
+                reader = csv.reader(f)
+                file_header = next(reader, None)
+                if file_header:
+                    header = file_header
+                for r in reader:
+                    if r and len(r) > 0 and r[0] == doc_id:
+                        found = True
+                    elif r:
+                        rows.append(r)
+
+            if found:
+                with open(log_file, "w", newline='', encoding="utf-8") as f:
+                    writer = csv.writer(f)
+                    writer.writerow(header)
+                    for r in rows:
+                        writer.writerow(r)
+        except Exception as e:
+            self.logger.warning(f"Error removing {doc_id} from {log_file}: {e}")
+
     def log_status(self, item, status):
         try:
             year = item["file_path"].parts[-5]  # Extract year from the path
             base_log_dir = Path(item["file_path"]).parents[4] / year / self.config["output"]["log_record_dir"]
             base_log_dir.mkdir(parents=True, exist_ok=True)
             log_file = base_log_dir / f"{status}"
-            file_exists = log_file.exists()
-            with open(log_file, "a", newline='', encoding="utf-8") as csvfile:
-                writer = csv.writer(csvfile)
-                if not file_exists:
-                    writer.writerow(["doc_id", "download_url", "file_path"])
-                if item.get('availability') in ('NO_URL', 'Unavailable'):
-                    unavailable_dir = item["file_path"].parent
-                    writer.writerow([item["doc_id"], item["download_url"], unavailable_dir])
-                else:
-                    writer.writerow([item["doc_id"], item["download_url"], str(item["file_path"])])
+
+            if item.get('availability') in ('NO_URL', 'Unavailable'):
+                file_location = item["file_path"].parent
+            else:
+                file_location = item["file_path"]
+
+            row_data = [item["doc_id"], item["download_url"], str(file_location)]
+            self._upsert_csv_row(log_file, item["doc_id"], row_data)
+
+            # If document was successfully archived, clean it from failed and unavailable logs
+            if status == self.config["output"].get("log_success"):
+                failed_log = base_log_dir / self.config["output"]["log_failure"]
+                unavailable_log = base_log_dir / self.config["output"]["log_unavailable"]
+                self._remove_csv_row(failed_log, item["doc_id"])
+                self._remove_csv_row(unavailable_log, item["doc_id"])
+
         except Exception as e:
             self.logger.error(f"❌ Failed to log status for {item.get('doc_id', 'unknown')}: {e}")
             print(f"❌ Failed to log status for {item.get('doc_id', 'unknown')}: {e}")
