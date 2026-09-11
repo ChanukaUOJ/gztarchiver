@@ -56,7 +56,6 @@ def run_v2_pipeline(args, config, user_input_kind):
 
     archive_location = Path(config["archive"]["archive_location"])
 
-    # Step 2: fetch required data from the API
     def _build_stop_date(user_input_kind: str) -> date_type:
         """Return the earliest date we still care about.
         Once a page's last entry is strictly before this date, stop."""
@@ -181,7 +180,7 @@ def run_v2_pipeline(args, config, user_input_kind):
 
         print(f"captured next action token {token}")
 
-        # Step 3 — Fetch and validate with Pydantic
+        # Step 2 — Fetch required data from the API and validate with Pydantic
         print("Fetching gazette data from API...")
         matching_entries = _fetch_all_matching()
         print(f"{len(matching_entries)} entries found matching the requested date range.")
@@ -190,7 +189,7 @@ def run_v2_pipeline(args, config, user_input_kind):
             print("No documents found for the given parameters.")
             return
 
-        # Step 4 — Filter by language
+        # Step 3 — Filter by language
         requested_lang = LANG_MAP.get(str(args.lang), "ENGLISH")
 
         # Only keep entries that have at least one content in the requested lang
@@ -204,7 +203,7 @@ def run_v2_pipeline(args, config, user_input_kind):
             print(f"No documents found for language '{args.lang}'.")
             return
 
-        # Step 5 — Build download metadata
+        # Step 4 — Build download metadata
         all_download_metadata = build_download_metadata_v2(
             entries=lang_filtered,
             archive_location=archive_location,
@@ -218,7 +217,7 @@ def run_v2_pipeline(args, config, user_input_kind):
 
         print(f"{len(all_download_metadata)} files queued for download.")
 
-        # Step 6 — Download PDFs via shared PDFDownloaderSpider
+        # Step 5 — Download PDFs via shared PDFDownloaderSpider
         settings = hide_logs()
         runner = CrawlerRunner(settings=settings)
         yield runner.crawl(
