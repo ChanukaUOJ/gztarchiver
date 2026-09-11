@@ -20,6 +20,7 @@ class PDFDownloaderSpider(scrapy.Spider):
         self.output_path = output_path
         self.archived_doc_ids = set()
         self.failed_doc_ids = set()
+        self.unavailable_doc_ids = set()
     
     def check_available_data(self):
         """
@@ -60,6 +61,12 @@ class PDFDownloaderSpider(scrapy.Spider):
                 self.failed_doc_ids.update(self._read_log_file(failed_log_file))
                 self.logger.info(f"🔄 Found {len(self.failed_doc_ids)} failed documents for {year}")
                 print(f"🔄 Found {len(self.failed_doc_ids)} failed documents for {year}")
+            # Check unavailable logs
+            unavailable_log_file = base_log_dir / self.config["output"]["log_unavailable"]
+            if unavailable_log_file.exists():
+                self.unavailable_doc_ids.update(self._read_log_file(unavailable_log_file))
+                self.logger.info(f"⚠️ Found {len(self.unavailable_doc_ids)} unavailable documents for {year}")
+                print(f"⚠️ Found {len(self.unavailable_doc_ids)} unavailable documents for {year}")
         
         # Filter metadata based on archived and failed logs
         filtered_metadata = []
@@ -103,12 +110,15 @@ class PDFDownloaderSpider(scrapy.Spider):
         if unavailable_items:
             self.logger.info(f"⚠️ Processing {len(unavailable_items)} unavailable documents:")
             for item in unavailable_items:
+                doc_id = item.get("doc_id")
                 # Create folder structure
                 folder_path = item["file_path"].parent
                 folder_path.mkdir(parents=True, exist_ok=True)
-                # Log to unavailable.csv
-                self.log_status(item, self.config["output"]["log_unavailable"])
-                self.logger.info(f"⚠️ Unavailable: {item['doc_id']}")
+                # Log to unavailable.csv only if not already logged
+                if doc_id not in self.unavailable_doc_ids:
+                    self.log_status(item, self.config["output"]["log_unavailable"])
+                    self.unavailable_doc_ids.add(doc_id)
+                self.logger.info(f"⚠️ Unavailable: {doc_id}")
         
         self.logger.info(f"📊 Data check summary:")
         self.logger.info(f"   - Total documents: {len(self.download_metadata)}")
