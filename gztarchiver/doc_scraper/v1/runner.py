@@ -92,7 +92,7 @@ def run_v1_pipeline(args, config, user_input_kind):
                         
             updated_all_download_metadata = load_doc_metadata_file(output_path_download)
             
-            if updated_all_download_metadata:
+            if updated_all_download_metadata is not None:
                 yield defer.maybeDeferred(post_crawl_processing, args, config, updated_all_download_metadata, archive_location)
             else:
                 yield defer.maybeDeferred(post_crawl_processing, args, config, all_download_metadata, archive_location)

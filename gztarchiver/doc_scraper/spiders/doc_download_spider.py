@@ -199,9 +199,13 @@ class PDFDownloaderSpider(scrapy.Spider):
             serializable_metadata = []
             
             for metadata_item in self.download_metadata:
-                item_copy = metadata_item.copy()
-                item_copy["file_path"] = str(item_copy["file_path"])  # Convert PosixPath to string
-                serializable_metadata.append(item_copy)
+                if hasattr(metadata_item, "model_dump"):
+                    item_dict = metadata_item.model_dump(mode="json")
+                else:
+                    item_dict = dict(metadata_item)
+                    if "file_path" in item_dict:
+                        item_dict["file_path"] = str(item_dict["file_path"])
+                serializable_metadata.append(item_dict)
                 
             with open(self.output_path, "w", encoding="utf-8") as jsonfile:
                 json.dump(serializable_metadata, jsonfile, indent=4)

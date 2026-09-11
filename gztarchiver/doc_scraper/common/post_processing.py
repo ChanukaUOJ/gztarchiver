@@ -10,7 +10,7 @@ from gztarchiver.doc_inspector.utils import (
 )
 from gztarchiver.doc_scraper.utils import save_metadata_to_filesystem
 
-# TODO: i have to send filtered_doc_metadata instead of the upload_metadata , otherwise if the create_folder_structure_on_cloud fails , the program stops from there.
+# TODO: send filtered_doc_metadata instead of the upload_metadata , otherwise if the create_folder_structure_on_cloud fails , the program stops from there.
 def post_crawl_processing(args, config, all_download_metadata, archive_location):
     """Handle post-crawl processing (Data preprocessing, etc.)"""
     try:

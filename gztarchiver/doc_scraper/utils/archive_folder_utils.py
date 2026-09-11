@@ -1,14 +1,14 @@
 from pathlib import Path
-from gztarchiver.models import GazetteEntry
+from gztarchiver.models import DownloadMetadata, GazetteEntry
 
 def build_download_metadata_v2(
     entries: list[GazetteEntry],
     archive_location: Path,
     archive_languages: list[str],
     cdn_proxy_url: str,
-) -> list[dict]:
+) -> list[DownloadMetadata]:
     """
-    Convert a list of filtered GazetteEntry objects into download_metadata dicts
+    Convert a list of filtered GazetteEntry objects into DownloadMetadata models
     compatible with PDFDownloaderSpider and post_crawl_processing.
 
     Args:
@@ -20,7 +20,7 @@ def build_download_metadata_v2(
         cdn_proxy_url: Base URL for downloading gazette PDFs via content proxy.
 
     Returns:
-        List of download_metadata dicts expected by PDFDownloaderSpider.
+        List of DownloadMetadata models expected by PDFDownloaderSpider.
     """
     all_download_metadata = []
 
@@ -55,15 +55,17 @@ def build_download_metadata_v2(
                 download_url = "N/A"
                 availability = "Unavailable"
 
-            all_download_metadata.append({
-                "doc_id": doc_id,
-                "date": date_str,
-                "des": description,
-                "download_url": download_url,
-                "file_name": file_name,
-                "file_path": file_path,
-                "availability": availability,
-            })
+            all_download_metadata.append(
+                DownloadMetadata(
+                    doc_id=doc_id,
+                    date=date_str,
+                    des=description,
+                    download_url=download_url,
+                    file_name=file_name,
+                    file_path=file_path,
+                    availability=availability,
+                )
+            )
 
     return all_download_metadata
 
@@ -109,15 +111,15 @@ def build_download_metadata_v1(archive_location, filtered_doc_metadata):
             file_name = f"{doc_id}_{lang_suffix}.pdf"
             file_path = folder_path / file_name       
         
-        download_metadata = {
-            "doc_id": doc_id,
-            "date": date_str,
-            "des": des,
-            "download_url": url,
-            "file_name" : file_name,
-            "file_path" : file_path,
-            "availability" : availability
-        }
+        download_metadata = DownloadMetadata(
+            doc_id=doc_id,
+            date=date_str,
+            des=des,
+            download_url=url,
+            file_name=file_name,
+            file_path=file_path,
+            availability=availability,
+        )
         
         all_download_metadata.append(download_metadata)
         
