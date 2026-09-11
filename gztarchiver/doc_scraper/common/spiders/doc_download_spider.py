@@ -18,8 +18,8 @@ class PDFDownloaderSpider(scrapy.Spider):
         self.download_metadata = download_metadata or []
         self.config = config or {}
         self.output_path = output_path
-        self.archived_docs = set()
-        self.failed_docs = set()
+        self.archived_doc_ids = set()
+        self.failed_doc_ids = set()
     
     def check_available_data(self):
         """
@@ -49,17 +49,17 @@ class PDFDownloaderSpider(scrapy.Spider):
             # Get base log directory for this year
             base_log_dir = Path(items[0]["file_path"]).parents[4] / year / self.config["output"]["log_record_dir"]
             # Check archived logs
-            archived_log_file = base_log_dir / self.config["output"]["log_success"]
-            if archived_log_file.exists():
-                self.archived_docs.update(self._read_log_file(archived_log_file))
-                self.logger.info(f"📋 Found {len(self.archived_docs)} archived documents for {year}")
-                print(f"📋 Found {len(self.archived_docs)} archived documents for {year}")
+            successfully_archived_log_file = base_log_dir / self.config["output"]["log_success"]
+            if successfully_archived_log_file.exists():
+                self.archived_doc_ids.update(self._read_log_file(successfully_archived_log_file))
+                self.logger.info(f"📋 Found {len(self.archived_doc_ids)} archived documents for {year}")
+                print(f"📋 Found {len(self.archived_doc_ids)} archived documents for {year}")
             # Check failed logs
             failed_log_file = base_log_dir / self.config["output"]["log_failure"]
             if failed_log_file.exists():
-                self.failed_docs.update(self._read_log_file(failed_log_file))
-                self.logger.info(f"🔄 Found {len(self.failed_docs)} failed documents for {year}")
-                print(f"🔄 Found {len(self.failed_docs)} failed documents for {year}")
+                self.failed_doc_ids.update(self._read_log_file(failed_log_file))
+                self.logger.info(f"🔄 Found {len(self.failed_doc_ids)} failed documents for {year}")
+                print(f"🔄 Found {len(self.failed_doc_ids)} failed documents for {year}")
         
         # Filter metadata based on archived and failed logs
         filtered_metadata = []
@@ -73,7 +73,7 @@ class PDFDownloaderSpider(scrapy.Spider):
         for item in self.download_metadata:
             doc_id = item.get("doc_id")
             url = item.get("download_url")
-            if doc_id in self.archived_docs:
+            if doc_id in self.archived_doc_ids:
                 # Skip already archived documents
                 skipped_count += 1
                 self.logger.debug(f"⏭️ Skipping archived document: {doc_id}")
@@ -83,7 +83,7 @@ class PDFDownloaderSpider(scrapy.Spider):
                 # Separate unavailable items (no valid URL)
                 unavailable_items.append(item)
                 continue
-            elif doc_id in self.failed_docs:
+            elif doc_id in self.failed_doc_ids:
                 # Retry failed documents
                 retry_count += 1
                 self.logger.info(f"🔄 Retrying failed document: {doc_id}")
@@ -94,7 +94,7 @@ class PDFDownloaderSpider(scrapy.Spider):
                 filtered_metadata.append(item)
         
         # Remove archived documents from download_metadata to avoid rerunning and remove the unavailable data 
-        self.download_metadata = [item for item in self.download_metadata if item.get("doc_id") not in self.archived_docs]
+        self.download_metadata = [item for item in self.download_metadata if item.get("doc_id") not in self.archived_doc_ids]
         
         # Save updated metadata only if documents were removed
         if len(self.download_metadata) < original_count:
