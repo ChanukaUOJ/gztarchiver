@@ -56,8 +56,123 @@ def run_v2_pipeline(args, config, user_input_kind):
 
     archive_location = Path(config["archive"]["archive_location"])
 
-    try:
+    # Step 2: fetch required data from the API
+    def _build_stop_date(user_input_kind: str) -> date_type:
+        """Return the earliest date we still care about.
+        Once a page's last entry is strictly before this date, stop."""
+        year = int(args.year)
+        if user_input_kind == "year-lang":
+            return date_type(year, 1, 1)
+        elif user_input_kind == "year-month-lang":
+            return date_type(year, int(args.month), 1)
+        else:  # year-month-day-lang
+            return date_type(year, int(args.month), int(args.day))
 
+    def _fetch_all_matching() -> list[GazetteEntry]:
+        """
+        Paginate through the API, collecting entries that fall within the
+        requested date range. Stops as soon as the page's last entry is
+        older than the earliest date we need.
+
+        Args:
+            page_size: Number of entries per API request (default 1500).
+
+        Returns:
+            All matching GazetteEntry objects across all pages fetched.
+        """
+        headers = {
+            "Accept": "text/x-component",
+            "Content-Type": "text/plain;charset=UTF-8",
+            "next-action": token}
+        stop_date = _build_stop_date(user_input_kind)
+        page_size = dynamic_page_size_based_on_date(stop_date)
+        collected: list[GazetteEntry] = []
+        current_page = 1
+
+        while True:
+            payload = [{
+                "apiEndpoint": api_endpoint,
+                "page": current_page,
+                "limit": page_size,
+                "q": "",
+                "search": "",
+                "forwarded": {},
+            }]
+
+            response = requests.post(
+                scrape_url,
+                headers=headers,
+                json=payload,
+                timeout=(30, 90),
+            )
+            response.raise_for_status()
+
+            # Next.js next-action endpoints return RSC wire format — NOT plain JSON.
+            # The body is newline-delimited frames, each prefixed with `<index>:`:
+            #   0:{"a":"$@1","f":"","b":"..."}  ← routing metadata
+            #   1:{"data":[...], "count":...}    ← actual payload
+            body = response.content.decode("utf-8")
+            frames: dict = {}
+            for line in body.split("\n"):
+                line = line.strip()
+                if not line:
+                    continue
+                idx, sep, json_str = line.partition(":")
+                if not sep:
+                    continue
+                try:
+                    frames[idx] = json.loads(json_str)
+                except json.JSONDecodeError:
+                    continue
+
+            raw = next(
+                (v for v in frames.values() if isinstance(v, dict) and "data" in v),
+                None,
+            )
+            if raw is None:
+                raise ValueError("Could not find data frame in RSC response")
+
+            page_response = GazetteApiResponse(**raw)
+            entries = page_response.data
+
+            if not entries:
+                print(f"  Page {current_page}: empty — stopping.")
+                break
+
+            # Filter entries on this page that match the target date range
+            for entry in entries:
+                entry_date = entry.date.date()
+                if _matches_filter(entry_date, user_input_kind):
+                    collected.append(entry)
+
+            # Early-stop: the last entry on this page is older
+            last_entry_date = entries[-1].date.date()
+            total_pages = page_response.pagination.totalPages
+            print(
+                f"  Page {current_page}/{total_pages}: "
+                f"last entry date = {last_entry_date}, "
+                f"stop date = {stop_date}, "
+                f"matches so far = {len(collected)}"
+            )
+
+            if last_entry_date < stop_date or current_page >= total_pages:
+                break
+
+            current_page += 1
+
+        return collected
+
+    def _matches_filter(entry_date: date_type, user_input_kind: str) -> bool:
+        """Return True if entry_date falls within the user's requested range."""
+        year = int(args.year)
+        if user_input_kind == "year-lang":
+            return entry_date.year == year
+        elif user_input_kind == "year-month-lang":
+            return entry_date.year == year and entry_date.month == int(args.month)
+        else:  # year-month-day-lang
+            return entry_date == date_type(year, int(args.month), int(args.day))
+
+    try:
         # Step 1 — Retrieve the Next.js server-action token from configuration
         token = v2_config.get("next_action_token")
         if not token:
@@ -66,125 +181,9 @@ def run_v2_pipeline(args, config, user_input_kind):
 
         print(f"captured next action token {token}")
 
-        # Step 2: fetch required data from the API
-        def _build_stop_date(user_input_kind: str) -> date_type:
-            """Return the earliest date we still care about.
-            Once a page's last entry is strictly before this date, stop."""
-            year = int(args.year)
-            if user_input_kind == "year-lang":
-                return date_type(year, 1, 1)
-            elif user_input_kind == "year-month-lang":
-                return date_type(year, int(args.month), 1)
-            else:  # year-month-day-lang
-                return date_type(year, int(args.month), int(args.day))
-
-        def fetch_all_matching() -> list[GazetteEntry]:
-            """
-            Paginate through the API, collecting entries that fall within the
-            requested date range. Stops as soon as the page's last entry is
-            older than the earliest date we need.
-
-            Args:
-                page_size: Number of entries per API request (default 1500).
-
-            Returns:
-                All matching GazetteEntry objects across all pages fetched.
-            """
-            headers = {
-                "Accept": "text/x-component",
-                "Content-Type": "text/plain;charset=UTF-8",
-                "next-action": token}
-            stop_date = _build_stop_date(user_input_kind)
-            page_size = dynamic_page_size_based_on_date(stop_date)
-            collected: list[GazetteEntry] = []
-            current_page = 1
-
-            while True:
-                payload = [{
-                    "apiEndpoint": api_endpoint,
-                    "page": current_page,
-                    "limit": page_size,
-                    "q": "",
-                    "search": "",
-                    "forwarded": {},
-                }]
-
-                response = requests.post(
-                    scrape_url,
-                    headers=headers,
-                    json=payload,
-                    timeout=(30, 90),
-                )
-                response.raise_for_status()
-
-                # Next.js next-action endpoints return RSC wire format — NOT plain JSON.
-                # The body is newline-delimited frames, each prefixed with `<index>:`:
-                #   0:{"a":"$@1","f":"","b":"..."}  ← routing metadata
-                #   1:{"data":[...], "count":...}    ← actual payload
-                body = response.content.decode("utf-8")
-                frames: dict = {}
-                for line in body.split("\n"):
-                    line = line.strip()
-                    if not line:
-                        continue
-                    idx, sep, json_str = line.partition(":")
-                    if not sep:
-                        continue
-                    try:
-                        frames[idx] = json.loads(json_str)
-                    except json.JSONDecodeError:
-                        continue
-
-                raw = next(
-                    (v for v in frames.values() if isinstance(v, dict) and "data" in v),
-                    None,
-                )
-                if raw is None:
-                    raise ValueError("Could not find data frame in RSC response")
-
-                page_response = GazetteApiResponse(**raw)
-                entries = page_response.data
-
-                if not entries:
-                    print(f"  Page {current_page}: empty — stopping.")
-                    break
-
-                # Filter entries on this page that match the target date range
-                for entry in entries:
-                    entry_date = entry.date.date()
-                    if _matches_filter(entry_date, user_input_kind):
-                        collected.append(entry)
-
-                # Early-stop: the last entry on this page is older
-                last_entry_date = entries[-1].date.date()
-                total_pages = page_response.pagination.totalPages
-                print(
-                    f"  Page {current_page}/{total_pages}: "
-                    f"last entry date = {last_entry_date}, "
-                    f"stop date = {stop_date}, "
-                    f"matches so far = {len(collected)}"
-                )
-
-                if last_entry_date < stop_date or current_page >= total_pages:
-                    break
-
-                current_page += 1
-
-            return collected
-
-        def _matches_filter(entry_date: date_type, user_input_kind: str) -> bool:
-            """Return True if entry_date falls within the user's requested range."""
-            year = int(args.year)
-            if user_input_kind == "year-lang":
-                return entry_date.year == year
-            elif user_input_kind == "year-month-lang":
-                return entry_date.year == year and entry_date.month == int(args.month)
-            else:  # year-month-day-lang
-                return entry_date == date_type(year, int(args.month), int(args.day))
-
         # Step 3 — Fetch and validate with Pydantic
         print("Fetching gazette data from API...")
-        matching_entries = fetch_all_matching()
+        matching_entries = _fetch_all_matching()
         print(f"{len(matching_entries)} entries found matching the requested date range.")
 
         if not matching_entries:
