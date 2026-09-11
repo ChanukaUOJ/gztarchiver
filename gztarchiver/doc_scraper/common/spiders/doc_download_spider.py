@@ -93,12 +93,11 @@ class PDFDownloaderSpider(scrapy.Spider):
                 # New document to download
                 filtered_metadata.append(item)
         
-        # Remove archived documents from download_metadata to avoid rerunning and remove the unavailable data 
+        # Remove archived documents from download_metadata to avoid rerunning
         self.download_metadata = [item for item in self.download_metadata if item.get("doc_id") not in self.archived_doc_ids]
         
-        # Save updated metadata only if documents were removed
-        if len(self.download_metadata) < original_count:
-            self.save_updated_metadata()
+        # Save updated metadata
+        self.save_updated_metadata()
         
         # Process unavailable items separately
         if unavailable_items:
