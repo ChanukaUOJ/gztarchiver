@@ -121,18 +121,18 @@ class PDFDownloaderSpider(scrapy.Spider):
                 self.logger.info(f"⚠️ Unavailable: {doc_id}")
         
         self.logger.info(f"📊 Data check summary:")
-        self.logger.info(f"   - Total documents: {len(self.download_metadata)}")
+        self.logger.info(f"   - Total documents: {original_count}")
         self.logger.info(f"   - Already archived (skipped): {skipped_count}")
         self.logger.info(f"   - Unavailable (no download URL): {len(unavailable_items)}")
-        self.logger.info(f"   - Failed (retrying): {retry_count}")
+        self.logger.info(f"   - Failed previously (retrying): {retry_count}")
         self.logger.info(f"   - New to download: {len(filtered_metadata) - retry_count}")
         self.logger.info(f"   - Total to download: {len(filtered_metadata)}")
         
         print(f"📊 Data check summary:")
-        print(f"   - Total documents: {len(self.download_metadata)}")
+        print(f"   - Total documents: {original_count}")
         print(f"   - Already archived (skipped): {skipped_count}")
         print(f"   - Unavailable (no download URL): {len(unavailable_items)}")
-        print(f"   - Failed (retrying): {retry_count}")
+        print(f"   - Failed previously (retrying): {retry_count}")
         print(f"   - New to download: {len(filtered_metadata) - retry_count}")
         print(f"   - Total to download: {len(filtered_metadata)}")
         
@@ -190,14 +190,12 @@ class PDFDownloaderSpider(scrapy.Spider):
         print(f"  --❌ Request failed: {item['download_url']}")
         
         # Update availability to Unavailable for failed downloads (e.g., 404 or corrupt links)
-        for metadata_item in self.download_metadata:
-            if metadata_item["doc_id"] == item["doc_id"]:
-                metadata_item["availability"] = "Unavailable"
-                break
-        
-        # Save updated download_metadata to JSON file
+        item["availability"] = "Unavailable"
+
+    def closed(self, reason):
+        """Called by Scrapy when spider completes all requests. Saves final metadata once."""
         self.save_updated_metadata()
-    
+
     def save_updated_metadata(self):
         """Save updated download_metadata to a JSON file."""
         if not self.output_path:
