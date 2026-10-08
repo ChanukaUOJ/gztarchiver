@@ -207,7 +207,7 @@ def run_v2_pipeline(args, config, user_input_kind):
         print(f"{available_count} documents available, {unavailable_count} unavailable for language '{requested_lang}'.")
         print(f"{len(all_download_metadata)} files queued for processing.")
 
-        # Step 5 — Download PDFs via shared PDFDownloaderSpider
+        # Step 4 — Download PDFs via shared PDFDownloaderSpider
         settings = hide_logs()
         runner = CrawlerRunner(settings=settings)
         yield runner.crawl(
