@@ -85,11 +85,9 @@ class PDFDownloaderSpider(scrapy.Spider):
                 skipped_count += 1
                 self.logger.debug(f"⏭️ Skipping archived document: {doc_id}")
                 print(f"⏭️ Skipping archived document: {doc_id}")
-                continue
             elif not url or url == "N/A":
                 # Separate unavailable items (no valid URL)
                 unavailable_items.append(item)
-                continue
             elif doc_id in self.failed_doc_ids:
                 # Retry failed documents
                 retry_count += 1
