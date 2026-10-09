@@ -12,8 +12,6 @@ class DownloadMetadata(BaseModel):
     file_path: Union[Path, str]
     availability: str
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
     def __getitem__(self, item: str) -> Any:
         return getattr(self, item)
 
