@@ -181,15 +181,27 @@ def save_classified_doc_metadata(metadata_list, archive_location, year, config):
     
     # Set the CSV file path
     csv_file_path = year_folder / config["output"]["log_classification"]
-    file_exists = csv_file_path.exists()
-    
-    # Write or append to the CSV file
-    with open(csv_file_path, mode='a', newline='', encoding='utf-8') as f:
+    header = ["Document ID", "Document Date", "Gazette Type", "Categorisation", "Document Path", "Document Availability", "Download URL", "Document Description"]
+
+    # Load existing rows keyed by Document ID
+    rows_by_doc_id = {}
+    if csv_file_path.exists():
+        with open(csv_file_path, mode='r', newline='', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            next(reader, None)  # skip header
+            for row in reader:
+                if row:
+                    rows_by_doc_id[row[0]] = row
+
+    # Upsert: update the row if the Document ID exists, otherwise add it
+    for row in metadata_list:
+        rows_by_doc_id[str(row[0])] = row
+
+    # Rewrite the CSV file
+    with open(csv_file_path, mode='w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
-        if not file_exists:
-            writer.writerow(["Document ID", "Document Date", "Gazette Type", "Categorisation", "Document Path", "Document Availability", "Download URL", "Document Description"])
-        for row in metadata_list:
-            writer.writerow(row)
+        writer.writerow(header)
+        writer.writerows(rows_by_doc_id.values())
 
     print(f"[✓] Metadata saved to {csv_file_path}")  
     return
