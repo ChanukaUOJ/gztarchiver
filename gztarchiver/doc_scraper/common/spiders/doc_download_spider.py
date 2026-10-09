@@ -27,28 +27,20 @@ class PDFDownloaderSpider(scrapy.Spider):
         Check archived and failed log files to determine what needs to be downloaded.
         Returns filtered metadata with items that need to be processed.
         """
-        # Group metadata by year to check respective log files
-        year_groups = {}
+        # Collect unique years to check respective log files
+        years = set()
         for item in self.download_metadata:
             try:
-                year = item["file_path"].parts[-5]  # Extract year from the path
-                if year not in year_groups:
-                    year_groups[year] = []
-                year_groups[year].append(item)
+                years.add(item["file_path"].parts[-5])  # Extract year from the path
             except (IndexError, AttributeError):
                 self.logger.warning(f"Could not extract year from path: {item.get('file_path', 'unknown')}")
                 print(f"Could not extract year from path: {item.get('file_path', 'unknown')}")
-                # Add to a default group if year extraction fails
-                if 'unknown' not in year_groups:
-                    year_groups['unknown'] = []
-                year_groups['unknown'].append(item)
-        
+
         # Check each year's log files
-        for year, items in year_groups.items():
-            if year == 'unknown':
-                continue
+        archive_root = Path(self.config["archive"]["archive_location"])
+        for year in years:
             # Get base log directory for this year
-            base_log_dir = Path(items[0]["file_path"]).parents[4] / year / self.config["output"]["log_record_dir"]
+            base_log_dir = archive_root / year / self.config["output"]["log_record_dir"]
             # Check archived logs
             successfully_archived_log_file = base_log_dir / self.config["output"]["log_success"]
             if successfully_archived_log_file.exists():
