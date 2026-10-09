@@ -1,5 +1,6 @@
 import requests
 from gztarchiver.doc_inspector.LLM import GAZETTE_CLASSIFICATION_PROMPT
+from gztarchiver.models import DownloadMetadata
 from pathlib import Path
 import csv
 from datetime import datetime, timezone
@@ -159,16 +160,16 @@ def process_failed_documents(archive_location, year, config):
         return results
          
     for record in error_records:
-        file_path_value = record.get('Document Path')
-        document_object = {
-            "doc_id": record.get('Document ID'),
-            "date": record.get('Document Date'),
-            "file_path": record.get('Document Path'),
-            "file_name": Path(file_path_value).name if file_path_value else None,
-            "availability": record.get('Document Availability'),
-            "download_url": record.get('Download URL'),
-            "des": record.get('Document Description')
-        }
+        file_path_value = record.get('Document Path') or ""
+        document_object = DownloadMetadata(
+            doc_id=record.get('Document ID') or "",
+            date=record.get('Document Date') or "",
+            file_path=Path(file_path_value),
+            file_name=Path(file_path_value).name,
+            availability=record.get('Document Availability') or "",
+            download_url=record.get('Download URL') or "",
+            des=record.get('Document Description'),
+        )
         results.append(document_object)
         
     return results

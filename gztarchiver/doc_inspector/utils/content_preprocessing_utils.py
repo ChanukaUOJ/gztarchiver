@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List, Dict, Any
 import unicodedata
 import fitz 
+from gztarchiver.models import DownloadMetadata
 
 def clean_extracted_text(text: str) -> str:
     """
@@ -54,7 +55,7 @@ def clean_extracted_text(text: str) -> str:
     
     return text.strip()
 
-def extract_text_from_pdf(all_download_metadata: List[Dict[str, Any]], chunk_size: int = 20) -> Dict[str, str]:
+def extract_text_from_pdf(all_download_metadata: List[DownloadMetadata], chunk_size: int = 20) -> Dict[str, Dict[str, Any]]:
     """
     Extract and clean text from PDF documents in chunks to avoid freezing on large files.
     Uses PyMuPDF for faster and more reliable extraction.

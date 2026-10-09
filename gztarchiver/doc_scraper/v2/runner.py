@@ -17,7 +17,7 @@ from gztarchiver.doc_scraper.utils import (
 )
 from gztarchiver.doc_scraper.common.post_processing import post_crawl_processing
 from gztarchiver.doc_scraper.common.spiders import PDFDownloaderSpider
-from gztarchiver.models import GazetteApiResponse, GazetteEntry
+from gztarchiver.models import DownloadMetadata, GazetteApiResponse, GazetteEntry
 
 logger = logging.getLogger(__name__)
 
@@ -220,13 +220,15 @@ def run_v2_pipeline(args, config, user_input_kind):
 
         # Reload from file — the spider updates availability for any failed
         # downloads before saving, so this reflects the actual final state.
-        updated_download_metadata = load_doc_metadata_file(str(output_path_download))
+        raw_download_metadata = load_doc_metadata_file(str(output_path_download))
 
-        if updated_download_metadata is None:
+        if raw_download_metadata is None:
             raise RuntimeError(
                 f"Updated download metadata not found at {output_path_download}; "
                 "refusing to continue with pre-download metadata."
             )
+
+        updated_download_metadata = [DownloadMetadata(**item) for item in raw_download_metadata]
         
         yield defer.maybeDeferred(
             post_crawl_processing, args, config, updated_download_metadata, str(archive_location)
