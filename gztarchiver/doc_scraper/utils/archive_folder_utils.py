@@ -53,7 +53,7 @@ def build_download_metadata_v2(
                 availability = "Available"
             else:
                 download_url = "N/A"
-                availability = "NO_URL"
+                availability = "Unavailable"
 
             all_download_metadata.append(
                 DownloadMetadata(
